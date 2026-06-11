@@ -1,0 +1,74 @@
+pipeline {
+    agent any
+ 
+    environment {
+        GIT_CREDS  = 'jenkins-id'
+        GIT_REPO   = 'https://github.com/subashinvest277-max/job-portal-new.git'
+        GIT_BRANCH = 'main'
+ 
+        SSH_KEY     = 'deploy-ec2-key'
+        DEPLOY_USER = 'ubuntu'
+        DEPLOY_HOST = '107.22.134.217'
+        APP_DIR     = '/home/ubuntu/job-portal-new/Job-Portal-Project-Dev'
+    }
+ 
+    stages {
+ 
+        stage('Checkout Code') {
+            steps {
+                git branch: "${GIT_BRANCH}",
+                    credentialsId: "${GIT_CREDS}",
+                    url: "${GIT_REPO}"
+            }
+        }
+ 
+        stage('Deploy Application') {
+            steps {
+                sshagent([env.SSH_KEY]) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} '
+                        cd ${APP_DIR}
+ 
+                        echo "Fetching latest code..."
+                        git fetch origin
+                        git reset --hard origin/main
+ 
+                        echo "Building frontend..."
+                        cd frontend
+                        npm install
+                        npm run build
+                        cd ..
+ 
+                        echo "Activating virtual environment..."
+                        source venv/bin/activate
+ 
+                        echo "Installing dependencies..."
+                        pip install -r requirement.txt
+ 
+                        echo "Restarting Gunicorn..."
+                        sudo systemctl restart gunicorn
+ 
+                        echo "Reloading Nginx..."
+                        sudo systemctl reload nginx
+ 
+                        echo "Checking Gunicorn status..."
+                        sudo systemctl is-active gunicorn
+                    '
+                    """
+                }
+            }
+        }
+    }
+ 
+    post {
+        success {
+            echo 'Deployment Successful'
+        }
+ 
+        failure {
+            echo 'Deployment Failed'
+        }
+    }
+}
+
+ 
