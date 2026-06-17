@@ -1,0 +1,16 @@
+.git
+myenv
+venv
+node_modules
+frontend/node_modules
+
+__pycache__
+*.pyc
+
+db.sqlite3
+
+media
+
+frontend/dist
+
+.DS_Store
